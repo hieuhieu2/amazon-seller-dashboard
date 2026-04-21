@@ -604,23 +604,17 @@ function fmtCurrency(n,decimals=2){
 function fmtInt(n){return Math.round(parseFloat(n)||0).toLocaleString('en-EU');}
 function fmtPct(n,dec=1){return (parseFloat(n)||0).toFixed(dec)+'%';}
 
+function getVelMap(d){d=d||30;const t=new Date(Date.now()-d*86400000).toISOString().split('T')[0];const v={};allOrders.filter(o=>o.order_date>=t&&(o.status==='Shipped'||o.status==='Active')).forEach(o=>{if(o.asin)v[o.asin]=(v[o.asin]||0)+(parseInt(o.units)||1);});return v;}
+function daysSupply(i){const r=parseFloat(i.days_of_supply||i['days-of-supply']||0);if(r>0)return r;const vel=(getVelMap()[i.asin]||0);return vel>0?Math.round(parseInt(i.qty_available||0)/(vel/30)):999;}
 // ── DB + Load ─────────────────────────────────────────────
 async function init(){
-  try{
-    const r=await fetch(`${SB}/rest/v1/orders?limit=1`,{headers:H});
-    const ok=r.ok||r.status===406;
-    document.getElementById('db-dot').className='dot '+(ok?'ok':'err');
-    document.getElementById('db-txt').textContent=ok?'Supabase connected':'DB error';
-  }catch(e){document.getElementById('db-dot').className='dot err';}
-
-  try{const r=await fetch(`${SB}/rest/v1/orders?select=*&limit=5000&order=order_date.desc`,{headers:H});const d=await r.json();allOrders=Array.isArray(d)&&d.length>0?d:[];}catch(e){allOrders=[];}
+  try{const r=await fetch(`${SB}/rest/v1/orders?limit=1`,{headers:H});const ok=r.ok||r.status===406;document.getElementById('db-dot').className='dot '+(ok?'ok':'err');document.getElementById('db-txt').textContent=ok?'Supabase connected':'DB error';}catch(e){document.getElementById('db-dot').className='dot err';}
+  try{let _p=0,_c=[];allOrders=[];do{const _r=await fetch(`${SB}/rest/v1/orders?select=*&limit=1000&offset=${_p*1000}&order=order_date.desc`,{headers:{...H,'Range-Unit':'items','Range':`${_p*1000}-${_p*1000+999}`}});_c=await _r.json();if(Array.isArray(_c)&&_c.length>0){allOrders=[...allOrders,..._c];_p++;}else break;}while(_c.length===1000);}catch(e){allOrders=[];}
   try{const r=await fetch(`${SB}/rest/v1/inventory?select=*&limit=500`,{headers:H});const d=await r.json();allInv=Array.isArray(d)&&d.length>0?d:[];}catch(e){allInv=[];}
-  try{const r=await fetch(`${SB}/rest/v1/ads?select=*&limit=5000&order=ad_date.desc`,{headers:H});const d=await r.json();allAds=Array.isArray(d)&&d.length>0?d:[];}catch(e){allAds=[];}
-
+  try{let _p=0,_c=[];allAds=[];do{const _r=await fetch(`${SB}/rest/v1/ads?select=*&limit=1000&offset=${_p*1000}&order=ad_date.desc`,{headers:{...H,'Range-Unit':'items','Range':`${_p*1000}-${_p*1000+999}`}});_c=await _r.json();if(Array.isArray(_c)&&_c.length>0){allAds=[...allAds,..._c];_p++;}else break;}while(_c.length===1000);}catch(e){allAds=[];}
   buildMktFilter();
   renderAll();
 }
-
 function buildMktFilter(){
   const mkts=new Set();
   allOrders.forEach(o=>{if(o.marketplace)mkts.add(nm(o.marketplace));});
@@ -670,14 +664,14 @@ function renderAll(){
   document.getElementById('kv-u').textContent=fmtInt(units);
   document.getElementById('kv-sp').textContent='€'+fmtCurrency(spend);
   document.getElementById('kv-ac').textContent=acos>0?fmtPct(acos):'—';
-  document.getElementById('kc-rev').textContent=from+' → '+to;
+  document.getElementById('kc-rev').textContent=dateMode==='all'?'All time':from+' → '+to;
   document.getElementById('kc-ord').textContent='Cancelled: '+fmtInt(orders.length-shipped.length);
   document.getElementById('kc-u').textContent='Avg '+fmtCurrency(shipped.length>0?units/shipped.length:0,1)+' units/order';
   document.getElementById('kc-sp').textContent='Ad revenue: €'+fmtCurrency(adRev);
   const acEl=document.getElementById('kc-ac');
   acEl.className='kchg '+(acos>0&&acos<20?'up':acos>=20?'dn':'nu');
   acEl.textContent=acos>0?(acos<20?'✓ Good performance':'⚠ Above target 20%'):'No ad data';
-  document.getElementById('rev-sub').textContent=from+' → '+to;
+  document.getElementById('rev-sub').textContent=dateMode==='all'?'All time':from+' → '+to;
 
   renderAlerts(orders,ads);
   renderTopProducts(shipped);
@@ -687,7 +681,7 @@ function renderAll(){
 
   // Perf grid
   const inv=allInv;
-  const lowStock=inv.filter(i=>parseFloat(i.days_of_supply||i['days-of-supply']||999)<30).length;
+  const lowStock=inv.filter(i=>daysSupply(i)<30).length;
   document.getElementById('perf-g').innerHTML=`
     <div class="pitem"><div class="plbl">Avg order value</div><div class="pval" style="color:var(--or)">€${fmtCurrency(shipped.length>0?rev/shipped.length:0)}</div><div class="psub">per shipped order</div></div>
     <div class="pitem"><div class="plbl">Ad spend ratio</div><div class="pval" style="color:${rev>0&&spend/rev<0.15?'var(--gr)':'var(--or)'}">€${fmtCurrency(rev>0?spend/rev*100:0,1)}<span style="font-size:12px">%</span></div><div class="psub">of revenue</div></div>
@@ -699,7 +693,7 @@ function renderAll(){
 function renderAlerts(orders,ads){
   const inv=allInv;
   const alerts=[];
-  const lowStock=inv.filter(i=>parseFloat(i.days_of_supply||i['days-of-supply']||999)<30);
+  const lowStock=inv.filter(i=>daysSupply(i)<30);
   if(lowStock.length>0) alerts.push({type:'danger',icon:'⚠️',title:lowStock.length+' SKUs low on stock',sub:'Less than 30 days supply remaining — restock soon'});
   const adSpend=ads.reduce((s,a)=>s+(parseFloat(a.spend)||0),0);
   const adRev=ads.reduce((s,a)=>s+(parseFloat(a.revenue)||0),0);
@@ -735,13 +729,13 @@ function renderTopProducts(orders){
 // ── Inventory mini ────────────────────────────────────────
 function renderInvMini(){
   const inv=allInv.slice(0,7);
-  const low=allInv.filter(i=>parseFloat(i.days_of_supply||i['days-of-supply']||999)<30).length;
+  const low=allInv.filter(i=>daysSupply(i)<30).length;
   document.getElementById('inv-cs').textContent=low+' alerts';
   document.getElementById('inv-badge').textContent=low;
   if(!inv.length){document.getElementById('inv-mini').innerHTML='<div style="font-size:11px;color:var(--t3);text-align:center;padding:12px">No inventory data</div>';return;}
   document.getElementById('inv-mini').innerHTML=inv.map(i=>{
     const qty=parseInt(i.qty_available??i.available??0);
-    const days=parseFloat(i.days_of_supply??i['days-of-supply']??999);
+    const days=daysSupply(i);
     const col=days>60?'var(--gr)':days>30?'var(--or)':'var(--re)';
     const name=(i.product_name||i.sku||'—').substring(0,36);
     const mx=Math.max(qty,200); const pct=Math.min(100,Math.round(qty/mx*100));
@@ -780,7 +774,7 @@ function renderMktChart(orders){
 function renderSales(){
   const orders=fOrders();
   const {from,to}=getRange();
-  document.getElementById('sales-sub').textContent=from+' → '+to;
+  document.getElementById('sales-sub').textContent=dateMode==='all'?'All time':from+' → '+to;
   const bd={};
   orders.forEach(o=>{const d=(o.order_date||'').split('T')[0];if(!bd[d])bd[d]=0;bd[d]+=parseFloat(o.revenue)||0;});
   const dates=Object.keys(bd).sort().slice(-90);
@@ -843,8 +837,8 @@ function renderInventoryPage(){
     sku:i.sku||'—',asin:i.asin||'—',
     qty:parseInt(i.qty_available??i.available??0),
     inb:parseInt(i.qty_inbound??i['inbound-quantity']??0),
-    days:parseFloat(i.days_of_supply??i['days-of-supply']??0),
-    s30:parseFloat(i['units-shipped-t30']??0),
+    days:daysSupply(i),
+    s30:parseFloat(i['units-shipped-t30']??0)||(getVelMap()[i.asin]||0),
     bsr:parseInt(i.sales_rank??i['sales-rank']??0)
   }));
   document.getElementById('inv-total').textContent=fmtInt(invRows.length);
@@ -894,7 +888,7 @@ function renderAdsPage(){
   const clicks=ads.reduce((s,a)=>s+(parseInt(a.clicks)||0),0);
   const impr=ads.reduce((s,a)=>s+(parseInt(a.impressions)||0),0);
   document.getElementById('ad-sp').textContent='€'+fmtCurrency(spend);
-  document.getElementById('ad-sp-sub').textContent=ads.length+' campaigns active';
+  document.getElementById('ad-sp-sub').textContent=new Set(ads.map(a=>a.campaign_name)).size+' campaigns active';
   document.getElementById('ad-ac').textContent=acos>0?fmtPct(acos):'—';
   document.getElementById('ad-ac').className='kval '+(acos>0&&acos<20?'up':acos>=20?'dn':'');
   document.getElementById('ad-rv').textContent='€'+fmtCurrency(rev);
@@ -1024,7 +1018,7 @@ async function getAI(){
   const rev=shipped.reduce((s,o)=>s+(parseFloat(o.revenue)||0),0);
   const spend=ads.reduce((s,a)=>s+(parseFloat(a.spend)||0),0);
   const adRev=ads.reduce((s,a)=>s+(parseFloat(a.revenue)||0),0);
-  const lowInv=allInv.filter(i=>parseFloat(i.days_of_supply||i['days-of-supply']||999)<30).length;
+  const lowInv=allInv.filter(i=>daysSupply(i)<30).length;
   const topMkts=[...new Set(shipped.map(o=>nm(o.marketplace||'')))].slice(0,3).join(', ');
   const data={revenue:'€'+fmtCurrency(rev),orders:shipped.length,adSpend:'€'+fmtCurrency(spend),adRevenue:'€'+fmtCurrency(adRev),acos:adRev>0?fmtPct(spend/adRev*100):'N/A',topMarkets:topMkts||'EU',lowStockSKUs:lowInv,period:dateMode};
   try{
