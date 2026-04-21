@@ -1090,7 +1090,7 @@ function mapRow(r,t){
   if(t==='ads'){
     const date=pd(r['date']||r['ad_date']);
     if(!date)return null;
-    return{campaign_name:r['campaign name']||r['campaign_name']||r['campaign']||'Unknown',ad_date:date,marketplace:'EU',spend:parseFloat(r['total cost']||r['spend']||0),impressions:parseInt(r['impressions']||0),clicks:parseInt(r['clicks']||0),orders:parseInt(r['purchases']||r['orders']||0),revenue:parseFloat(r['sales']||r['revenue']||0),acos:0};
+    return{campaign_name:r['campaign name']||r['campaign_name']||r['campaign']||'Unknown',ad_date:date,marketplace:r['region']||r['marketplace']||'EU',spend:parseFloat(r['supply cost']||r['total cost']||r['spend']||0)||0,impressions:parseInt(r['impressions']||0)||0,clicks:parseInt(r['clicks']||0)||0,orders:parseInt(r['purchases']||r['units sold']||r['orders']||0)||0,revenue:parseFloat(r['sales']||r['revenue']||0)||0,acos:0};
   }
   return null;
 }
