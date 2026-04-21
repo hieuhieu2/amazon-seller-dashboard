@@ -604,7 +604,7 @@ function fmtCurrency(n,decimals=2){
 function fmtInt(n){return Math.round(parseFloat(n)||0).toLocaleString('en-EU');}
 function fmtPct(n,dec=1){return (parseFloat(n)||0).toFixed(dec)+'%';}
 
-function getVelMap(d){d=d||30;const t=new Date(Date.now()-d*86400000).toISOString().split('T')[0];const v={};allOrders.filter(o=>o.order_date>=t&&(o.status==='Shipped'||o.status==='Active')).forEach(o=>{if(o.asin)v[o.asin]=(v[o.asin]||0)+(parseInt(o.units)||1);});return v;}
+function getVelMap(d){d=d||30;const latest=allOrders.reduce((m,o)=>o.order_date>m?o.order_date:m,'2000-01-01');const t=new Date(new Date(latest).getTime()-d*86400000).toISOString().split('T')[0];const v={};allOrders.filter(o=>o.order_date>=t&&(o.status==='Shipped'||o.status==='Active')).forEach(o=>{if(o.asin)v[o.asin]=(v[o.asin]||0)+(parseInt(o.units)||1);});return v;}
 function daysSupply(i){const r=parseFloat(i.days_of_supply||i['days-of-supply']||0);if(r>0)return r;const vel=(getVelMap()[i.asin]||0);return vel>0?Math.round(parseInt(i.qty_available||0)/(vel/30)):999;}
 // ── DB + Load ─────────────────────────────────────────────
 async function init(){
