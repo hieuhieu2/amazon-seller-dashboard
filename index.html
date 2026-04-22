@@ -487,6 +487,141 @@ tr:hover td{background:rgba(255,255,255,.013)}
 
     <!-- ── P&L STATEMENT ── -->
     <div class="pg" id="pg-pnl">
+      <!-- ===== ECONOMICS UPLOAD BLOCK ===== -->
+<div class="card" style="margin-bottom: 20px; border: 1px solid var(--or);">
+    <h3 style="color: var(--or); margin-top: 0;">Step 2: Upload Economics & Fees (EU Markets)</h3>
+    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+        
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label style="font-size: 12px; color: var(--t2);">Report Month:</label>
+            <input type="month" id="econReportMonth"
+                style="background: var(--bg3); border: 1px solid var(--b); color: var(--t); padding: 8px; border-radius: var(--rs);">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <label style="font-size: 12px; color: var(--t2);">Economics CSV:</label>
+            <input type="file" id="econUpload" accept=".csv"
+                style="background: var(--bg3); border: 1px solid var(--b); color: var(--t); padding: 5px; border-radius: var(--rs);">
+        </div>
+
+        <button onclick="processEconomicsFile()"
+            style="background: var(--or); color: #000; border: none; padding: 10px 20px; border-radius: var(--rs); cursor: pointer; font-weight: 600;">
+            Mapping to P&L
+        </button>
+    </div>
+</div>
+
+<script>
+// ===== ECONOMICS MULTI-CURRENCY SYSTEM =====
+
+// Exchange rates → EUR
+const EUR_EXCHANGE_RATES = {
+    '€': 1, 'EUR': 1,
+    '£': 1.17, 'GBP': 1.17,
+    'zł': 0.23, 'PLN': 0.23,
+    'kr': 0.088, 'SEK': 0.088
+};
+
+// Parse currency string → float EUR
+function parseEconCurrency(val) {
+    if (!val || val === "" || val === "--") return 0;
+
+    let rate = 1;
+    const s = String(val);
+
+    for (const sym in EUR_EXCHANGE_RATES) {
+        if (s.includes(sym)) {
+            rate = EUR_EXCHANGE_RATES[sym];
+            break;
+        }
+    }
+
+    let clean = s.replace(/[^\d,-]/g, '').replace(',', '.');
+    return (parseFloat(clean) || 0) * rate;
+}
+
+// Main processor
+async function processEconomicsFile() {
+    const fileInput = document.getElementById('econUpload');
+    const monthInput = document.getElementById('econReportMonth');
+
+    if (!monthInput.value) {
+        alert("Select month first!");
+        return;
+    }
+
+    if (!fileInput.files[0]) {
+        alert("Upload CSV file!");
+        return;
+    }
+
+    const text = await fileInput.files[0].text();
+    const lines = text.split('\n');
+
+    let data = {
+        month: monthInput.value,
+        revenue: 0,
+        fbaFees: 0,
+        sellingFees: 0,
+        ads: 0,
+        storage: 0,
+        netProceed: 0
+    };
+
+    for (let i = 2; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length < 50) continue;
+
+        data.netProceed += parseEconCurrency(cols[5]);
+        data.revenue += parseEconCurrency(cols[13]);
+        data.fbaFees += parseEconCurrency(cols[20]);
+        data.sellingFees += parseEconCurrency(cols[161]);
+        data.storage += parseEconCurrency(cols[224]);
+        data.ads += parseEconCurrency(cols[364]);
+    }
+
+    const db = JSON.parse(localStorage.getItem('econ_reports_db') || '{}');
+    db[monthInput.value] = data;
+    localStorage.setItem('econ_reports_db', JSON.stringify(db));
+
+    alert("Mapping success!");
+
+    if (typeof renderPnL === 'function') renderPnL();
+}
+
+// ===== AUTO APPLY TO P&L =====
+
+// Hook vào renderPnL có sẵn
+const originalRenderPnL = typeof renderPnL === 'function' ? renderPnL : null;
+
+renderPnL = function () {
+    if (originalRenderPnL) originalRenderPnL();
+
+    const econDB = JSON.parse(localStorage.getItem('econ_reports_db') || '{}');
+    const latestMonth = Object.keys(econDB).sort().pop();
+    const econ = econDB[latestMonth];
+
+    if (!econ) return;
+
+    document.getElementById('pl-rev').textContent = '€' + fmtCurrency(econ.revenue);
+    document.getElementById('pl-net').textContent = '€' + fmtCurrency(econ.netProceed);
+
+    const totalFees = econ.fbaFees + econ.sellingFees + econ.storage;
+    document.getElementById('pl-fees').textContent = '€' + fmtCurrency(totalFees);
+    document.getElementById('pl-spend').textContent = '€' + fmtCurrency(econ.ads);
+
+    const profit = econ.netProceed - econ.ads;
+    document.getElementById('pl-profit').textContent = '€' + fmtCurrency(profit);
+
+    // % calculations
+    if (econ.revenue > 0) {
+        document.getElementById('pl-net-pct').textContent = ((econ.netProceed / econ.revenue) * 100).toFixed(1) + '% of revenue';
+        document.getElementById('pl-fees-pct').textContent = ((totalFees / econ.revenue) * 100).toFixed(1) + '% of revenue';
+        document.getElementById('pl-spend-pct').textContent = ((econ.ads / econ.revenue) * 100).toFixed(1) + '% of revenue';
+        document.getElementById('pl-profit-pct').textContent = ((profit / econ.revenue) * 100).toFixed(1) + '% margin';
+    }
+};
+</script>
 
       <!-- Summary KPI strip -->
       <div class="kgrid" style="grid-template-columns:repeat(5,1fr)">
