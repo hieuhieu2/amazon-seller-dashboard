@@ -1074,7 +1074,26 @@ function mapRow(r,t){
   if(t==='ads'){
     const date=parseDate(r['date']||r['ad_date']);
     if(!date)return null;
-    const _cn=r['campaign name']||r['campaign_name']||'';if(!_cn||/^\d+$/.test(_cn.trim()))return null;return{campaign_name:_cn.trim(),ad_date:date,marketplace:r['region']||r['marketplace']||'EU',spend:parseFloat(r['supply cost']||r['total cost']||r['spend']||0)||0,impressions:parseInt(r['impressions']||0)||0,clicks:parseInt(r['clicks']||0)||0,orders:parseInt(r['purchases']||r['units sold']||r['orders']||0)||0,revenue:parseFloat(r['sales']||r['revenue']||0)||0,acos:0};
+    const _cn=r['campaign name']||r['campaign_name']||'';
+    if(!_cn||/^\d+$/.test(_cn.trim()))return null;
+    return{
+      campaign_name:_cn.trim(),
+      ad_date:date,
+      marketplace:r['region']||r['marketplace']||'EU',
+      ad_product:r['ad product']||r['ad_product']||null,
+      advertised_asin:r['advertised product id']||r['advertised_asin']||r['asin']||null,
+      advertised_sku:r['advertised product sku']||r['advertised_sku']||r['sku']||null,
+      budget_currency:r['budget currency']||r['budget_currency']||null,
+      spend:parseFloat(r['supply cost']||r['total cost']||r['spend']||0)||0,
+      impressions:parseInt(r['impressions']||0)||0,
+      clicks:parseInt(r['clicks']||0)||0,
+      cpc:parseFloat(r['cpc']||0)||0,
+      orders:parseInt(r['units sold']||r['purchases']||r['orders']||0)||0,
+      revenue:parseFloat(r['sales']||r['revenue']||0)||0,
+      roas:parseFloat(r['roas']||0)||0,
+      total_fees:parseFloat(r['total fees']||r['total_fees']||0)||0,
+      acos:0
+    };
   }
   return null;
 }
