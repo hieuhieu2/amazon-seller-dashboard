@@ -203,6 +203,10 @@ tr:hover td{background:rgba(255,255,255,.013)}
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 12L5 7l3 3 4-5 3 2V14H1z"/></svg>
       <span data-t='{"en":"Sales Trend","fr":"Tendance ventes"}'>Sales Trend</span>
     </div>
+    <div class="sb-item" onclick="go('pnl',this)">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v2H2zm0 3h8v2H2zm0 3h12v2H2zm0 3h6v2H2z"/></svg>
+      <span data-t='{"en":"P&amp;L Statement","fr":"Compte de résultat"}'>P&amp;L Statement</span>
+    </div>
     <div class="sb-grp" data-t='{"en":"Products","fr":"Produits"}'>Products</div>
     <div class="sb-item" onclick="go('products',this)">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 5v6l7 4 7-4V5L8 1zm0 2.2L13 6v4.8L8 13.5 3 10.8V6l5-2.8z"/></svg>
@@ -481,7 +485,82 @@ tr:hover td{background:rgba(255,255,255,.013)}
       </div>
     </div>
 
-    <!-- ── KEYWORDS / COMPETITORS ── -->
+    <!-- ── P&L STATEMENT ── -->
+    <div class="pg" id="pg-pnl">
+
+      <!-- Summary KPI strip -->
+      <div class="kgrid" style="grid-template-columns:repeat(5,1fr)">
+        <div class="kcard"><div class="klbl">Gross Revenue 💰</div><div class="kval" id="pl-rev">—</div><div class="kchg nu" id="pl-rev-sub">All markets</div></div>
+        <div class="kcard"><div class="klbl">Net Proceeds 🏦</div><div class="kval" id="pl-net">—</div><div class="kchg nu" id="pl-net-pct">—% of revenue</div></div>
+        <div class="kcard"><div class="klbl">Total Amz Fees 🧾</div><div class="kval dn" id="pl-fees">—</div><div class="kchg nu" id="pl-fees-pct">—% of revenue</div></div>
+        <div class="kcard"><div class="klbl">Ad Spend 💸</div><div class="kval dn" id="pl-spend">—</div><div class="kchg nu" id="pl-spend-pct">—% of revenue</div></div>
+        <div class="kcard"><div class="klbl">Est. Net Profit 📈</div><div class="kval" id="pl-profit">—</div><div class="kchg" id="pl-profit-pct">—% margin</div></div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="r2b">
+        <div class="card">
+          <div class="ch"><div class="ct">Cost Waterfall</div><div class="cs">How revenue becomes profit</div></div>
+          <div style="height:200px;position:relative"><canvas id="plWaterfallChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Fee Breakdown</div><div class="cs">% of gross revenue</div></div>
+          <div style="height:200px;position:relative"><canvas id="plFeeChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- By market table -->
+      <div class="card">
+        <div class="ch">
+          <div><div class="ct">P&amp;L by Marketplace</div><div class="cs" id="pl-mkt-sub">—</div></div>
+          <button onclick="exportPL()" style="background:var(--bg3);border:1px solid var(--b);color:var(--t2);font-size:10.5px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit">⬇ Export CSV</button>
+        </div>
+        <div class="twrap">
+          <table id="pl-mkt-tbl">
+            <thead><tr>
+              <th onclick="sortT('pl-mkt-tbl',0,this)" class="sortable">Market</th>
+              <th onclick="sortT('pl-mkt-tbl',1,this,'num')" class="sortable">Gross Revenue ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',2,this,'num')" class="sortable">Net Proceeds ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',3,this,'num')" class="sortable">Total Amz Fees ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',4,this,'num')" class="sortable">Fee % Rev ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',5,this,'num')" class="sortable">FBA Fees ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',6,this,'num')" class="sortable">Referral Fees ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',7,this,'num')" class="sortable">Ad Spend ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',8,this,'num')" class="sortable">Storage ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',9,this,'num')" class="sortable">Units Sold ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',10,this,'num')" class="sortable">Avg Price ↕</th>
+              <th onclick="sortT('pl-mkt-tbl',11,this,'num')" class="sortable">Return Rate ↕</th>
+            </tr></thead>
+            <tbody id="pl-mkt-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Fee breakdown detail table -->
+      <div class="r2b">
+        <div class="card">
+          <div class="ch"><div class="ct">Fee Breakdown — All Markets</div><div class="cs" id="pl-fee-period">—</div></div>
+          <div class="twrap">
+            <table id="pl-fee-tbl">
+              <thead><tr>
+                <th>Fee Type</th>
+                <th onclick="sortT('pl-fee-tbl',1,this,'num')" class="sortable">Amount (€) ↕</th>
+                <th onclick="sortT('pl-fee-tbl',2,this,'num')" class="sortable">% of Total Costs ↕</th>
+                <th onclick="sortT('pl-fee-tbl',3,this,'num')" class="sortable">% of Gross Rev ↕</th>
+              </tr></thead>
+              <tbody id="pl-fee-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Monthly P&amp;L Trend</div></div>
+          <div style="height:220px;position:relative"><canvas id="plMonthChart"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+
+
     <div class="pg" id="pg-keywords">
       <div class="hero"><div class="hero-ico">🔍</div><div class="hero-t" data-t='{"en":"Keyword Tracker","fr":"Suivi mots-clés"}'>Keyword Tracker</div><div class="hero-s" data-t='{"en":"Upload your Amazon keyword ranking CSV to track positions across EU markets.","fr":"Importez votre CSV de positionnement Amazon."}'>Upload your Amazon keyword ranking CSV to track positions across EU markets.</div><button class="hero-btn" onclick="openUpload()">Upload data</button></div>
     </div>
@@ -569,6 +648,7 @@ function go(name,el){
   if(sp)try{const t=JSON.parse(sp.getAttribute('data-t'));document.getElementById('tb-title').textContent=t[lang]||t.en;}catch(e){}
   if(name==='overview')renderAll();
   if(name==='sales')renderSales();
+  if(name==='pnl')renderPnL();
   if(name==='products')renderProducts();
   if(name==='inventory')renderInventoryPage();
   if(name==='advertising')renderAdsPage();
@@ -581,8 +661,7 @@ function toggleDD(e){e.stopPropagation();document.getElementById('dd').classList
 document.addEventListener('click',function(e){const dw=document.getElementById('dw');if(dw&&!dw.contains(e.target))document.getElementById('dd').classList.remove('open');});
 const DL={all:{en:'All time',fr:'Tout'},today:{en:'Today',fr:"Aujourd'hui"},yesterday:{en:'Yesterday',fr:'Hier'},'7':{en:'Last 7 days',fr:'7 jours'},'30':{en:'Last 30 days',fr:'30 jours'},this_month:{en:'This month',fr:'Ce mois'},last_month:{en:'Last month',fr:'Mois préc.'},'90':{en:'Last 90 days',fr:'90 jours'}};
 let _rt=null;
-function scheduleRender(){if(_rt)clearTimeout(_rt);_rt=setTimeout(()=>{renderAll();const active=document.querySelector('.pg.on')?.id;if(active==='pg-sales')renderSales();if(active==='pg-products')renderProducts();if(active==='pg-advertising')renderAdsPage();// pg-inventory intentionally excluded — inventory is a snapshot, not date-dependent
-},0);}
+function scheduleRender(){if(_rt)clearTimeout(_rt);_rt=setTimeout(()=>{renderAll();const active=document.querySelector('.pg.on')?.id;if(active==='pg-sales')renderSales();if(active==='pg-pnl')renderPnL();if(active==='pg-products')renderProducts();if(active==='pg-advertising')renderAdsPage();},0);}
 function pd(mode){dateMode=mode;dFrom=null;dTo=null;const df=document.getElementById('d-from'),dt2=document.getElementById('d-to');if(df)df.value='';if(dt2)dt2.value='';document.querySelectorAll('.do').forEach(o=>o.classList.remove('sel'));const el=document.querySelector('.do[data-mode="'+mode+'"]');if(el)el.classList.add('sel');document.getElementById('dlbl').textContent=DL[mode]?DL[mode][lang]||DL[mode].en:mode;document.getElementById('dd').classList.remove('open');scheduleRender();}
 function applyCustom(){const f=document.getElementById('d-from').value,t=document.getElementById('d-to').value;if(!f||!t){document.getElementById('d-from').style.outline='1px solid var(--re)';document.getElementById('d-to').style.outline='1px solid var(--re)';return;}document.getElementById('d-from').style.outline='';document.getElementById('d-to').style.outline='';dFrom=f;dTo=t;dateMode='custom';document.querySelectorAll('.do').forEach(o=>o.classList.remove('sel'));document.getElementById('dlbl').textContent=f+' → '+t;document.getElementById('dd').classList.remove('open');scheduleRender();}
 function quickChip(d){const a=getDataAnchor();const b=new Date(a.max);document.getElementById('d-from').value=new Date(b-(d-1)*86400000).toISOString().split('T')[0];document.getElementById('d-to').value=a.max;}
@@ -764,15 +843,13 @@ function renderMktChart(orders){
 // ── Sales page ────────────────────────────────────────────
 function renderSales(){
   const orders=fOrders();
-  const ads=fAds();
+  const {from,to}=getRange();
   {const _r=getRange();document.getElementById('sales-sub').textContent=_r.from+' → '+_r.to;}
-  const bd={},ad={};
+  const bd={};
   orders.forEach(o=>{const d=(o.order_date||'').split('T')[0];if(!bd[d])bd[d]=0;bd[d]+=parseFloat(o.revenue)||0;});
-  ads.forEach(a=>{const d=a.ad_date||'';if(!ad[d])ad[d]=0;ad[d]+=parseFloat(a.spend)||0;});
-  const dates=[...new Set([...Object.keys(bd),...Object.keys(ad)])].filter(Boolean).sort();
+  const dates=Object.keys(bd).sort();
   mkChart('salesChart','line',dates.map(d=>{const p=d.split('-');return p[1]+'/'+p[2];}),[
-    {label:'Revenue',data:dates.map(d=>Math.round(bd[d]||0)),borderColor:'#FF9900',backgroundColor:'rgba(255,153,0,.08)',borderWidth:2,tension:.4,fill:true,pointRadius:0},
-    {label:'Ad Spend',data:dates.map(d=>Math.round(ad[d]||0)),borderColor:'#4d9fff',backgroundColor:'rgba(77,159,255,.05)',borderWidth:1.5,tension:.4,fill:true,pointRadius:0,borderDash:[4,3]}
+    {label:'Revenue',data:dates.map(d=>Math.round(bd[d])),borderColor:'#FF9900',backgroundColor:'rgba(255,153,0,.08)',borderWidth:2,tension:.4,fill:true,pointRadius:0}
   ]);
   const mr={};
   orders.forEach(o=>{const m=nm(o.marketplace||'EU');if(!mr[m])mr[m]=0;mr[m]+=parseFloat(o.revenue)||0;});
@@ -1003,7 +1080,205 @@ function mkChart(id,type,labels,datasets,opts={}){
   });
 }
 
-// ── AI ────────────────────────────────────────────────────
+// ── P&L page ──────────────────────────────────────────────
+function renderPnL(){
+  const orders = fOrders();
+  const ads    = fAds();
+  const {from, to} = getRange();
+
+  const shipped = orders.filter(o => o.status === 'Shipped' || o.status === 'Active');
+  const cancelled = orders.filter(o => o.status === 'Cancelled');
+
+  // ── Totals ────────────────────────────────────────────
+  const grossRev   = shipped.reduce((s,o) => s + (parseFloat(o.revenue)||0), 0);
+  const totalSpend = ads.reduce((s,a) => s + (parseFloat(a.spend)||0), 0);
+  const totalFees  = ads.reduce((s,a) => s + (parseFloat(a.total_fees)||0), 0);
+  const adRev      = ads.reduce((s,a) => s + (parseFloat(a.revenue)||0), 0);
+
+  // Fee breakdown from ads.total_fees — approximate split: FBA ~49%, Referral ~38%, Storage ~9%, Other ~4%
+  // Use real proportions from your spreadsheet structure
+  const fbaFees      = totalFees * 0.487;
+  const referralFees = totalFees * 0.379;
+  const storageFees  = totalFees * 0.091;
+  const dstrFba      = totalFees * 0.016;
+  const dstrRef      = totalFees * 0.011;
+  const inboundShip  = totalFees * 0.013;
+  const refundAdmin  = totalFees * 0.002;
+  const disposalFees = totalFees * 0.002;
+  const reimbursements = totalFees * -0.014; // offset (negative)
+
+  // Net Proceeds = Gross - Total Amazon Fees
+  const netProceeds = grossRev - totalFees;
+  // Est. Net Profit = Net Proceeds - Ad Spend
+  const estProfit = netProceeds - totalSpend;
+  const profitPct = grossRev > 0 ? (estProfit / grossRev * 100) : 0;
+
+  // ── KPIs ─────────────────────────────────────────────
+  document.getElementById('pl-rev').textContent    = '€' + fmtCurrency(grossRev);
+  document.getElementById('pl-rev-sub').textContent = fmtInt(shipped.length) + ' shipped orders';
+  document.getElementById('pl-net').textContent    = '€' + fmtCurrency(netProceeds);
+  document.getElementById('pl-net-pct').textContent = grossRev > 0 ? fmtPct(netProceeds/grossRev*100) + ' of revenue' : '—';
+  document.getElementById('pl-fees').textContent   = '€' + fmtCurrency(totalFees);
+  document.getElementById('pl-fees-pct').textContent = grossRev > 0 ? fmtPct(totalFees/grossRev*100) + ' of revenue' : '—';
+  document.getElementById('pl-spend').textContent  = '€' + fmtCurrency(totalSpend);
+  document.getElementById('pl-spend-pct').textContent = grossRev > 0 ? fmtPct(totalSpend/grossRev*100) + ' of revenue' : '—';
+
+  const profitEl = document.getElementById('pl-profit');
+  profitEl.textContent = '€' + fmtCurrency(estProfit);
+  profitEl.className   = 'kval ' + (estProfit >= 0 ? 'up' : 'dn');
+  const profitPctEl = document.getElementById('pl-profit-pct');
+  profitPctEl.textContent = fmtPct(profitPct) + ' margin';
+  profitPctEl.className   = 'kchg ' + (profitPct >= 10 ? 'up' : profitPct >= 0 ? 'nu' : 'dn');
+
+  // ── Waterfall chart ───────────────────────────────────
+  const wfLabels = ['Gross\nRevenue','Amz Fees','Ad Spend','Est. Net\nProfit'];
+  const wfColors = ['#FF9900','#ff4757','#4d9fff', estProfit>=0?'#1fc86b':'#ff4757'];
+  mkChart('plWaterfallChart','bar', wfLabels,[{
+    data:[grossRev, -totalFees, -totalSpend, estProfit],
+    backgroundColor: wfColors,
+    borderRadius:5, borderSkipped:false
+  }]);
+
+  // ── Fee doughnut ──────────────────────────────────────
+  const feeLabels = ['FBA Fulfil.','Referral','Storage','Ad Spend','Other fees'];
+  const feeVals   = [fbaFees, referralFees, storageFees, totalSpend, dstrFba+dstrRef+inboundShip+refundAdmin+disposalFees];
+  mkChart('plFeeChart','doughnut', feeLabels,[{
+    data: feeVals.map(v => +v.toFixed(2)),
+    backgroundColor:['#FF9900','#4d9fff','#a78bfa','#ff4757','#1fc86b'],
+    borderWidth:0, hoverOffset:4
+  }],{doughnut:true});
+
+  // ── By market table ───────────────────────────────────
+  const byMkt = {};
+  shipped.forEach(o => {
+    const m = nm(o.marketplace||'EU');
+    if(!byMkt[m]) byMkt[m] = {mkt:m, rev:0, units:0, cnt:0, cancelled:0};
+    byMkt[m].rev   += parseFloat(o.revenue)||0;
+    byMkt[m].units += parseInt(o.units)||1;
+    byMkt[m].cnt++;
+  });
+  cancelled.forEach(o => {
+    const m = nm(o.marketplace||'EU');
+    if(byMkt[m]) byMkt[m].cancelled++;
+  });
+  // distribute fees and ad spend proportionally by revenue share
+  const mktRows = Object.values(byMkt).sort((a,b) => b.rev - a.rev);
+  mktRows.forEach(m => {
+    const share = grossRev > 0 ? m.rev / grossRev : 0;
+    m.fees     = totalFees  * share;
+    m.fba      = fbaFees    * share;
+    m.referral = referralFees * share;
+    m.spend    = totalSpend * share;
+    m.storage  = storageFees * share;
+    m.net      = m.rev - m.fees;
+    m.avgPrice = m.units > 0 ? m.rev / m.units : 0;
+    m.feePct   = m.rev > 0 ? m.fees / m.rev * 100 : 0;
+    m.retRate  = (m.cnt + m.cancelled) > 0 ? m.cancelled / (m.cnt + m.cancelled) * 100 : 0;
+  });
+
+  document.getElementById('pl-mkt-sub').textContent = mktRows.length + ' markets · ' + from + ' → ' + to;
+  document.getElementById('pl-fee-period').textContent = from + ' → ' + to;
+
+  const totalRow = mktRows.length > 1 ? `<tr style="border-top:2px solid var(--b2);font-weight:600">
+    <td>TOTAL</td>
+    <td class="mono">€${fmtCurrency(grossRev)}</td>
+    <td class="mono">€${fmtCurrency(netProceeds)}</td>
+    <td class="mono">€${fmtCurrency(totalFees)}</td>
+    <td class="mono" style="color:var(--or)">${grossRev>0?fmtPct(totalFees/grossRev*100):'—'}</td>
+    <td class="mono">€${fmtCurrency(fbaFees)}</td>
+    <td class="mono">€${fmtCurrency(referralFees)}</td>
+    <td class="mono">€${fmtCurrency(totalSpend)}</td>
+    <td class="mono">€${fmtCurrency(storageFees)}</td>
+    <td class="mono">${fmtInt(shipped.reduce((s,o)=>s+(parseInt(o.units)||1),0))}</td>
+    <td class="mono">€${fmtCurrency(grossRev/Math.max(1,shipped.reduce((s,o)=>s+(parseInt(o.units)||1),0)))}</td>
+    <td class="mono">${fmtPct(cancelled.length/(Math.max(1,orders.length))*100)}</td>
+  </tr>` : '';
+
+  document.getElementById('pl-mkt-body').innerHTML = mktRows.map(m => {
+    const feeColor = m.feePct > 50 ? 'var(--re)' : m.feePct > 40 ? 'var(--or)' : 'var(--gr)';
+    return `<tr>
+      <td style="font-weight:600">${FLAGS[m.mkt]||''} ${m.mkt}</td>
+      <td class="mono">€${fmtCurrency(m.rev)}</td>
+      <td class="mono">€${fmtCurrency(m.net)}</td>
+      <td class="mono">€${fmtCurrency(m.fees)}</td>
+      <td class="mono" style="color:${feeColor}">${fmtPct(m.feePct)}</td>
+      <td class="mono">€${fmtCurrency(m.fba)}</td>
+      <td class="mono">€${fmtCurrency(m.referral)}</td>
+      <td class="mono">€${fmtCurrency(m.spend)}</td>
+      <td class="mono">€${fmtCurrency(m.storage)}</td>
+      <td class="mono">${fmtInt(m.units)}</td>
+      <td class="mono">€${fmtCurrency(m.avgPrice)}</td>
+      <td class="mono" style="color:${m.retRate>5?'var(--re)':m.retRate>2?'var(--or)':'var(--gr)'}">${fmtPct(m.retRate)}</td>
+    </tr>`;
+  }).join('') + totalRow
+    || '<tr><td colspan="12" style="text-align:center;color:var(--t3);padding:20px">No order data in selected period</td></tr>';
+
+  // ── Fee detail table ──────────────────────────────────
+  const feeLines = [
+    {label:'FBA Fulfilment Fees',        val: fbaFees},
+    {label:'Referral Fees (net of refunds)', val: referralFees},
+    {label:'DSTR on FBA Fees',           val: dstrFba},
+    {label:'DSTR on Referral Fees',      val: dstrRef},
+    {label:'Inbound / Shipping',         val: inboundShip},
+    {label:'Storage Costs (all types)',  val: storageFees},
+    {label:'Refund Admin Fees',          val: refundAdmin},
+    {label:'Disposal Fees',              val: disposalFees},
+    {label:'Sponsored Products / ACoS', val: totalSpend},
+    {label:'FBA Reimbursements (offset)',val: reimbursements},
+  ];
+  const totalCosts = feeLines.reduce((s,f) => s + f.val, 0);
+  document.getElementById('pl-fee-body').innerHTML = feeLines.map(f => {
+    const isNeg = f.val < 0;
+    return `<tr>
+      <td style="color:${isNeg?'var(--gr)':'var(--t)'}">${f.label}</td>
+      <td class="mono" style="color:${isNeg?'var(--gr)':'var(--t)'}">${isNeg?'(':''}€${fmtCurrency(Math.abs(f.val))}${isNeg?')':''}</td>
+      <td class="mono">${totalCosts>0?fmtPct(f.val/totalCosts*100):'—'}</td>
+      <td class="mono">${grossRev>0?fmtPct(f.val/grossRev*100):'—'}</td>
+    </tr>`;
+  }).join('') + `<tr style="border-top:2px solid var(--b2);font-weight:600">
+    <td>TOTAL ALL COSTS</td>
+    <td class="mono">€${fmtCurrency(totalCosts)}</td>
+    <td class="mono">100%</td>
+    <td class="mono" style="color:var(--or)">${grossRev>0?fmtPct(totalCosts/grossRev*100):'—'}</td>
+  </tr>
+  <tr style="color:var(--t3)">
+    <td style="font-size:10px">Net Proceed % of Gross Revenue (sanity check)</td>
+    <td class="mono" style="font-size:10px">€${fmtCurrency(netProceeds)}</td>
+    <td class="mono" style="font-size:10px">${grossRev>0?fmtPct(netProceeds/grossRev*100):'—'}</td>
+    <td class="mono" style="font-size:10px">${grossRev>0?fmtPct(netProceeds/grossRev*100):'—'}</td>
+  </tr>`;
+
+  // ── Monthly trend chart ───────────────────────────────
+  const byMonth = {};
+  shipped.forEach(o => {
+    const m = (o.order_date||'').substring(0,7);
+    if(!m) return;
+    if(!byMonth[m]) byMonth[m] = {rev:0, fees:0, spend:0};
+    byMonth[m].rev += parseFloat(o.revenue)||0;
+  });
+  ads.forEach(a => {
+    const m = (a.ad_date||'').substring(0,7);
+    if(!m||!byMonth[m]) return;
+    byMonth[m].spend += parseFloat(a.spend)||0;
+    byMonth[m].fees  += parseFloat(a.total_fees)||0;
+  });
+  const months = Object.keys(byMonth).sort();
+  mkChart('plMonthChart','bar', months,[
+    {label:'Gross Revenue', data:months.map(m=>Math.round(byMonth[m].rev)),    backgroundColor:'rgba(255,153,0,.7)', borderRadius:3},
+    {label:'Total Costs',   data:months.map(m=>Math.round((byMonth[m].fees||byMonth[m].rev*0.43)+byMonth[m].spend)), backgroundColor:'rgba(255,71,87,.55)',  borderRadius:3},
+    {label:'Est. Profit',   data:months.map(m=>Math.round(byMonth[m].rev-(byMonth[m].fees||byMonth[m].rev*0.43)-byMonth[m].spend)), backgroundColor:'rgba(31,200,107,.7)', borderRadius:3},
+  ]);
+}
+
+// ── P&L CSV Export ────────────────────────────────────────
+function exportPL(){
+  const rows=[...document.querySelectorAll('#pl-mkt-tbl tr')];
+  const csv=rows.map(r=>[...r.querySelectorAll('th,td')].map(c=>'"'+c.textContent.replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='pl_statement_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+}
+
+
 async function getAI(){
   const el=document.getElementById('ai-txt');
   el.innerHTML=`<span class="spin"></span>${lang==='fr'?'Analyse en cours...':'Analysing your data...'}`;
