@@ -567,6 +567,7 @@ function go(name,el){
   document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('on')); el.classList.add('on');
   const sp=el.querySelector('span[data-t]');
   if(sp)try{const t=JSON.parse(sp.getAttribute('data-t'));document.getElementById('tb-title').textContent=t[lang]||t.en;}catch(e){}
+  if(name==='overview')renderAll();
   if(name==='sales')renderSales();
   if(name==='products')renderProducts();
   if(name==='inventory')renderInventoryPage();
@@ -580,7 +581,8 @@ function toggleDD(e){e.stopPropagation();document.getElementById('dd').classList
 document.addEventListener('click',function(e){const dw=document.getElementById('dw');if(dw&&!dw.contains(e.target))document.getElementById('dd').classList.remove('open');});
 const DL={all:{en:'All time',fr:'Tout'},today:{en:'Today',fr:"Aujourd'hui"},yesterday:{en:'Yesterday',fr:'Hier'},'7':{en:'Last 7 days',fr:'7 jours'},'30':{en:'Last 30 days',fr:'30 jours'},this_month:{en:'This month',fr:'Ce mois'},last_month:{en:'Last month',fr:'Mois préc.'},'90':{en:'Last 90 days',fr:'90 jours'}};
 let _rt=null;
-function scheduleRender(){if(_rt)clearTimeout(_rt);_rt=setTimeout(()=>{renderAll();const _ap=document.getElementById('pg-advertising');if(_ap&&_ap.classList.contains('on'))renderAdsPage();},0);}
+function scheduleRender(){if(_rt)clearTimeout(_rt);_rt=setTimeout(()=>{renderAll();const active=document.querySelector('.pg.on')?.id;if(active==='pg-sales')renderSales();if(active==='pg-products')renderProducts();if(active==='pg-advertising')renderAdsPage();// pg-inventory intentionally excluded — inventory is a snapshot, not date-dependent
+},0);}
 function pd(mode){dateMode=mode;dFrom=null;dTo=null;const df=document.getElementById('d-from'),dt2=document.getElementById('d-to');if(df)df.value='';if(dt2)dt2.value='';document.querySelectorAll('.do').forEach(o=>o.classList.remove('sel'));const el=document.querySelector('.do[data-mode="'+mode+'"]');if(el)el.classList.add('sel');document.getElementById('dlbl').textContent=DL[mode]?DL[mode][lang]||DL[mode].en:mode;document.getElementById('dd').classList.remove('open');scheduleRender();}
 function applyCustom(){const f=document.getElementById('d-from').value,t=document.getElementById('d-to').value;if(!f||!t){document.getElementById('d-from').style.outline='1px solid var(--re)';document.getElementById('d-to').style.outline='1px solid var(--re)';return;}document.getElementById('d-from').style.outline='';document.getElementById('d-to').style.outline='';dFrom=f;dTo=t;dateMode='custom';document.querySelectorAll('.do').forEach(o=>o.classList.remove('sel'));document.getElementById('dlbl').textContent=f+' → '+t;document.getElementById('dd').classList.remove('open');scheduleRender();}
 function quickChip(d){const a=getDataAnchor();const b=new Date(a.max);document.getElementById('d-from').value=new Date(b-(d-1)*86400000).toISOString().split('T')[0];document.getElementById('d-to').value=a.max;}
@@ -762,13 +764,15 @@ function renderMktChart(orders){
 // ── Sales page ────────────────────────────────────────────
 function renderSales(){
   const orders=fOrders();
-  const {from,to}=getRange();
+  const ads=fAds();
   {const _r=getRange();document.getElementById('sales-sub').textContent=_r.from+' → '+_r.to;}
-  const bd={};
+  const bd={},ad={};
   orders.forEach(o=>{const d=(o.order_date||'').split('T')[0];if(!bd[d])bd[d]=0;bd[d]+=parseFloat(o.revenue)||0;});
-  const dates=Object.keys(bd).sort();
+  ads.forEach(a=>{const d=a.ad_date||'';if(!ad[d])ad[d]=0;ad[d]+=parseFloat(a.spend)||0;});
+  const dates=[...new Set([...Object.keys(bd),...Object.keys(ad)])].filter(Boolean).sort();
   mkChart('salesChart','line',dates.map(d=>{const p=d.split('-');return p[1]+'/'+p[2];}),[
-    {label:'Revenue',data:dates.map(d=>Math.round(bd[d])),borderColor:'#FF9900',backgroundColor:'rgba(255,153,0,.08)',borderWidth:2,tension:.4,fill:true,pointRadius:0}
+    {label:'Revenue',data:dates.map(d=>Math.round(bd[d]||0)),borderColor:'#FF9900',backgroundColor:'rgba(255,153,0,.08)',borderWidth:2,tension:.4,fill:true,pointRadius:0},
+    {label:'Ad Spend',data:dates.map(d=>Math.round(ad[d]||0)),borderColor:'#4d9fff',backgroundColor:'rgba(77,159,255,.05)',borderWidth:1.5,tension:.4,fill:true,pointRadius:0,borderDash:[4,3]}
   ]);
   const mr={};
   orders.forEach(o=>{const m=nm(o.marketplace||'EU');if(!mr[m])mr[m]=0;mr[m]+=parseFloat(o.revenue)||0;});
@@ -1069,7 +1073,7 @@ function mapRow(r,t){
     return{order_id:r['amazon-order-id']||r['order-id']||null,order_date:date,asin:r['asin']||r['asin-1']||null,product_name:r['product-name']||r['title']||null,marketplace:r['sales-channel']||r['marketplace']||'EU',revenue:parseFloat(r['item-price']||r['revenue']||r['price'])||null,units:parseInt(r['quantity']||r['quantity-purchased']||r['units']||1),cost:null,margin:25,bsr:null,fulfillment:r['fulfillment-channel']||r['fulfillment']||'Amazon',status:r['order-status']||r['item-status']||'Active'};
   }
   if(t==='inventory'){
-    return{sku:r['sku']||null,asin:r['asin']||null,product_name:r['product-name']||null,qty_available:parseInt(r['available']||0),qty_inbound:parseInt(r['inbound-quantity']||0),restock_level:50,fulfillment:'FBA'};
+    return{sku:r['sku']||null,asin:r['asin']||null,product_name:r['product-name']||null,qty_available:parseInt(r['available']||0),qty_inbound:parseInt(r['inbound-quantity']||0),restock_level:parseInt(r['fba-minimum-inventory-level']||50),'days-of-supply':parseFloat(r['days-of-supply']||0)||null,'units-shipped-t30':parseInt(r['units-shipped-t30']||0),'sales-rank':parseInt(r['sales-rank']||0)||null,fulfillment:'FBA'};
   }
   if(t==='ads'){
     const date=parseDate(r['date']||r['ad_date']);
@@ -1079,7 +1083,7 @@ function mapRow(r,t){
     return{
       campaign_name:_cn.trim(),
       ad_date:date,
-      marketplace:r['region']||r['marketplace']||'EU',
+      marketplace:({'GBP':'UK','PLN':'PL','SEK':'SE','EUR':'EU'})[r['budget currency']]||r['region']||r['marketplace']||'EU',
       ad_product:r['ad product']||r['ad_product']||null,
       advertised_asin:r['advertised product id']||r['advertised_asin']||r['asin']||null,
       advertised_sku:r['advertised product sku']||r['advertised_sku']||r['sku']||null,
@@ -1109,7 +1113,7 @@ function parseDate(d){
   return null;
 }
 
-init();
+init().then(()=>{const _oel=document.querySelector('.sb-item[onclick*="overview"]');if(_oel)go('overview',_oel);});
 </script>
 </body>
 </html>
