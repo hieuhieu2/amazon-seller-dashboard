@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SellerHub EU</title>
@@ -1524,6 +1525,125 @@ function parseDate(d){
 }
 
 init().then(()=>{const _oel=document.querySelector('.sb-item[onclick*="overview"]');if(_oel)go('overview',_oel);});
+</script>
+<script>
+
+// --- SUPABASE CONFIGURATION ---
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Cấu hình tỷ giá (Quy đổi về EUR)
+const RATES = { '€': 1, 'EUR': 1, '£': 1.17, 'GBP': 1.17, 'zł': 0.23, 'PLN': 0.23, 'kr': 0.088, 'SEK': 0.088 };
+
+function cleanAmazonNum(val) {
+  if (!val) return 0;
+  let rate = 1;
+  const s = String(val);
+  for (const k in RATES) { if (s.includes(k)) { rate = RATES[k]; break; } }
+  // Xử lý số kiểu Châu Âu (4.262,73 -> 4262.73)
+  let n = s.replace(/[^\d,-]/g, '').replace('.', '').replace(',', '.');
+  return (parseFloat(n) || 0) * rate;
+}
+
+async function handleEconUpload() {
+  const fileInput = document.getElementById('econFile');
+  const monthInput = document.getElementById('econMonth');
+  
+  if (!fileInput || !monthInput) {
+      alert("Thiếu element econFile hoặc econMonth trong HTML!");
+      return;
+  }
+
+  const file = fileInput.files[0];
+  const month = monthInput.value;
+
+  if (!month || !file) return alert("Vui lòng chọn đủ tháng và file!");
+
+  try {
+    const text = await file.text();
+    const rows = text.split('\n').map(r => r.split(','));
+    
+    let totals = { revenue: 0, fba: 0, selling: 0, ads: 0, storage: 0, net: 0 };
+
+    // Mapping logic (Giả định index chuẩn của file Amazon Economics)
+    // Lưu ý: Amazon thay đổi file thường xuyên, bạn có thể cần điều chỉnh index
+    rows.forEach((cols, i) => {
+      if (i < 1 || cols.length < 10) return;
+      // Dựa trên file user cung cấp:
+      // Revenue thường cột 13, Net 5, v.v.
+      totals.net += cleanAmazonNum(cols[5]);
+      totals.revenue += cleanAmazonNum(cols[13]);
+      totals.fba += cleanAmazonNum(cols[20]);
+      totals.selling += cleanAmazonNum(cols[161]);
+      totals.storage += cleanAmazonNum(cols[224]);
+      totals.ads += cleanAmazonNum(cols[364]);
+    });
+
+    const { error } = await supabase
+      .from('amazon_economics')
+      .upsert({
+        report_month: month,
+        revenue: totals.revenue,
+        fba_fees: totals.fba,
+        selling_fees: totals.selling,
+        ad_spend: totals.ads,
+        storage_fees: totals.storage,
+        net_proceed: totals.net,
+        updated_at: new Date()
+      }, { onConflict: 'report_month' });
+
+    if (error) throw error;
+    
+    alert("Thành công! Dữ liệu đã được lưu vào Supabase.");
+    loadDashboardFromSupabase(month);
+  } catch (err) {
+    console.error(err);
+    alert("Lỗi xử lý file hoặc Database: " + err.message);
+  }
+}
+
+async function loadDashboardFromSupabase(selectedMonth) {
+  if (!selectedMonth) return;
+  
+  const { data, error } = await supabase
+    .from('amazon_economics')
+    .select('*')
+    .eq('report_month', selectedMonth)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+      console.error("Lỗi lấy dữ liệu:", error);
+      return;
+  }
+
+  if (data) {
+    console.log("Dữ liệu từ Supabase:", data);
+    // Cập nhật giao diện. Bạn hãy đổi ID cho đúng với HTML của bạn.
+    const updateVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
+    };
+
+    updateVal('rev-val', data.revenue);
+    updateVal('fba-val', data.fba_fees);
+    updateVal('sell-val', data.selling_fees);
+    updateVal('ads-val', data.ad_spend);
+    updateVal('storage-val', data.storage_fees);
+    updateVal('net-val', data.net_proceed);
+  } else {
+    console.log("Không có dữ liệu cho tháng " + selectedMonth);
+  }
+}
+
+// Lắng nghe sự kiện đổi tháng ở bộ lọc chính (nếu có)
+document.addEventListener('DOMContentLoaded', () => {
+    const mainMonthFilter = document.getElementById('month-filter') || document.getElementById('econMonth');
+    if (mainMonthFilter) {
+        mainMonthFilter.addEventListener('change', (e) => loadDashboardFromSupabase(e.target.value));
+    }
+});
+
 </script>
 </body>
 </html>
