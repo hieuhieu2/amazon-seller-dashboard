@@ -248,22 +248,30 @@ tr:hover td{background:rgba(255,255,255,.013)}
     <div class="mkt-grp" id="mkt-grp"></div>
     <div class="tb-right">
       <div class="dw" id="dw">
-        <button class="db" onclick="toggleDD()">📅 <span id="dlbl">All time</span></button>
-        <div class="dd" id="dd">
-          <div class="do sel" onclick="pd('all')" data-t='{"en":"All time","fr":"Tout"}'>All time</div>
-          <div class="do" onclick="pd('today')" data-t='{"en":"Today","fr":"Aujourd\'hui"}'>Today</div>
-          <div class="do" onclick="pd('yesterday')" data-t='{"en":"Yesterday","fr":"Hier"}'>Yesterday</div>
-          <div class="do" onclick="pd('7')" data-t='{"en":"Last 7 days","fr":"7 derniers jours"}'>Last 7 days</div>
-          <div class="do" onclick="pd('30')" data-t='{"en":"Last 30 days","fr":"30 derniers jours"}'>Last 30 days</div>
-          <div class="do" onclick="pd('this_month')" data-t='{"en":"This month","fr":"Ce mois-ci"}'>This month</div>
-          <div class="do" onclick="pd('last_month')" data-t='{"en":"Last month","fr":"Mois dernier"}'>Last month</div>
-          <div class="do" onclick="pd('90')" data-t='{"en":"Last 90 days","fr":"90 derniers jours"}'>Last 90 days</div>
+        <button class="db" onclick="toggleDD(event)" style="min-width:160px;justify-content:space-between"><span style="display:flex;align-items:center;gap:5px">📅 <span id="dlbl">All time</span></span><span style="opacity:.35;font-size:9px">▾</span></button>
+        <div class="dd" id="dd" style="min-width:245px">
+          <div class="do sel" data-mode="all" onclick="pd('all')">All time <span id="do-range-all" style="font-size:9px;opacity:.5;margin-left:4px"></span></div>
+          <div class="do" data-mode="today" onclick="pd('today')">Today</div>
+          <div class="do" data-mode="yesterday" onclick="pd('yesterday')">Yesterday</div>
+          <div class="do" data-mode="7" onclick="pd('7')">Last 7 days</div>
+          <div class="do" data-mode="30" onclick="pd('30')">Last 30 days</div>
+          <div class="do" data-mode="this_month" onclick="pd('this_month')">This month</div>
+          <div class="do" data-mode="last_month" onclick="pd('last_month')">Last month</div>
+          <div class="do" data-mode="90" onclick="pd('90')">Last 90 days</div>
           <div class="ddiv"></div>
           <div class="cw">
-            <label>Custom range</label>
-            <input type="date" id="d-from">
-            <input type="date" id="d-to">
-            <button class="ab" onclick="applyCustom()">Apply</button>
+            <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">📆 Custom range</div>
+            <div style="display:flex;gap:4px;margin-bottom:8px">
+              <button onclick="quickChip(7)" style="flex:1;padding:3px 0;background:var(--bg4);border:1px solid var(--b2);color:var(--t2);font-size:10px;border-radius:5px;cursor:pointer;font-family:inherit">7d</button>
+              <button onclick="quickChip(14)" style="flex:1;padding:3px 0;background:var(--bg4);border:1px solid var(--b2);color:var(--t2);font-size:10px;border-radius:5px;cursor:pointer;font-family:inherit">14d</button>
+              <button onclick="quickChip(30)" style="flex:1;padding:3px 0;background:var(--bg4);border:1px solid var(--b2);color:var(--t2);font-size:10px;border-radius:5px;cursor:pointer;font-family:inherit">30d</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 16px 1fr;align-items:end;gap:4px;margin-bottom:8px">
+              <div><div style="font-size:9px;color:var(--t3);margin-bottom:3px">From</div><input type="date" id="d-from" style="width:100%;background:var(--bg3);border:1px solid var(--b);color:var(--t);font-size:10px;padding:5px 6px;border-radius:5px;font-family:inherit;outline:none"></div>
+              <div style="text-align:center;color:var(--t3);font-size:10px;padding-bottom:6px">→</div>
+              <div><div style="font-size:9px;color:var(--t3);margin-bottom:3px">To</div><input type="date" id="d-to" style="width:100%;background:var(--bg3);border:1px solid var(--b);color:var(--t);font-size:10px;padding:5px 6px;border-radius:5px;font-family:inherit;outline:none"></div>
+            </div>
+            <button onclick="applyCustom()" style="width:100%;padding:7px;background:var(--or);color:#000;font-size:11px;font-weight:600;border-radius:6px;border:none;cursor:pointer;font-family:inherit">Apply</button>
           </div>
         </div>
       </div>
@@ -565,37 +573,17 @@ function go(name,el){
   if(name==='advertising')renderAdsPage();
 }
 
-// ── Date ──────────────────────────────────────────────────
-const DL={all:{en:'All time',fr:'Tout'},today:{en:'Today',fr:'Aujourd\'hui'},yesterday:{en:'Yesterday',fr:'Hier'},'7':{en:'Last 7 days',fr:'7 derniers jours'},'30':{en:'Last 30 days',fr:'30 derniers jours'},this_month:{en:'This month',fr:'Ce mois-ci'},last_month:{en:'Last month',fr:'Mois dernier'},'90':{en:'Last 90 days',fr:'90 derniers jours'}};
-function toggleDD(){document.getElementById('dd').classList.toggle('open');}
-document.addEventListener('click',e=>{if(!document.getElementById('dw').contains(e.target))document.getElementById('dd').classList.remove('open');});
-function pd(m){
-  dateMode=m; dFrom=null; dTo=null;
-  document.querySelectorAll('.do').forEach(o=>o.classList.remove('sel')); event.currentTarget.classList.add('sel');
-  document.getElementById('dlbl').textContent=(DL[m]?DL[m][lang]:m);
-  document.getElementById('dd').classList.remove('open');
-  renderAll();
-}
-function applyCustom(){
-  const f=document.getElementById('d-from').value,t=document.getElementById('d-to').value;
-  if(!f||!t)return;
-  dFrom=f;dTo=t;dateMode='custom';
-  document.getElementById('dlbl').textContent=f+' → '+t;
-  document.getElementById('dd').classList.remove('open');
-  renderAll();
-}
-function getRange(){
-  const now=new Date(),today=now.toISOString().split('T')[0];
-  if(dateMode==='all')return{from:'2000-01-01',to:'2099-12-31'};
-  if(dateMode==='custom')return{from:dFrom,to:dTo};
-  if(dateMode==='today')return{from:today,to:today};
-  if(dateMode==='yesterday'){const y=new Date(now-86400000).toISOString().split('T')[0];return{from:y,to:y};}
-  if(dateMode==='this_month')return{from:new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0],to:today};
-  if(dateMode==='last_month')return{from:new Date(now.getFullYear(),now.getMonth()-1,1).toISOString().split('T')[0],to:new Date(now.getFullYear(),now.getMonth(),0).toISOString().split('T')[0]};
-  const d=parseInt(dateMode)||30;
-  return{from:new Date(now-d*86400000).toISOString().split('T')[0],to:today};
-}
-
+// ── Date ────────────────────────────────────────────────────────
+function getDataAnchor(){const od=allOrders.map(o=>o.order_date?.split('T')[0]).filter(Boolean);const ad=allAds.map(a=>a.ad_date).filter(Boolean);const all=[...od,...ad];return{max:all.length?all.reduce((m,d)=>d>m?d:m):new Date().toISOString().split('T')[0],min:all.length?all.reduce((m,d)=>d<m?d:m):new Date().toISOString().split('T')[0]};}
+function getRange(){if(dateMode==='all'){const a=getDataAnchor();return{from:a.min,to:a.max};}if(dateMode==='custom')return{from:dFrom||'2000-01-01',to:dTo||'2099-12-31'};const anchor=getDataAnchor(),base=new Date(anchor.max),to=anchor.max;if(dateMode==='today')return{from:to,to};if(dateMode==='yesterday'){const y=new Date(base-86400000).toISOString().split('T')[0];return{from:y,to:y};}if(dateMode==='this_month')return{from:to.substring(0,7)+'-01',to};if(dateMode==='last_month'){const lm=new Date(base.getFullYear(),base.getMonth()-1,1);const le=new Date(base.getFullYear(),base.getMonth(),0);return{from:lm.toISOString().split('T')[0],to:le.toISOString().split('T')[0]};}const days=parseInt(dateMode)||30;return{from:new Date(base-(days-1)*86400000).toISOString().split('T')[0],to};}
+function toggleDD(e){e.stopPropagation();document.getElementById('dd').classList.toggle('open');}
+document.addEventListener('click',function(e){const dw=document.getElementById('dw');if(dw&&!dw.contains(e.target))document.getElementById('dd').classList.remove('open');});
+const DL={all:{en:'All time',fr:'Tout'},today:{en:'Today',fr:"Aujourd'hui"},yesterday:{en:'Yesterday',fr:'Hier'},'7':{en:'Last 7 days',fr:'7 jours'},'30':{en:'Last 30 days',fr:'30 jours'},this_month:{en:'This month',fr:'Ce mois'},last_month:{en:'Last month',fr:'Mois préc.'},'90':{en:'Last 90 days',fr:'90 jours'}};
+let _rt=null;
+function scheduleRender(){if(_rt)clearTimeout(_rt);_rt=setTimeout(()=>renderAll(),0);}
+function pd(mode){dateMode=mode;dFrom=null;dTo=null;const df=document.getElementById('d-from'),dt2=document.getElementById('d-to');if(df)df.value='';if(dt2)dt2.value='';document.querySelectorAll('.do').forEach(o=>o.classList.remove('sel'));const el=document.querySelector('.do[data-mode="'+mode+'"]');if(el)el.classList.add('sel');document.getElementById('dlbl').textContent=DL[mode]?DL[mode][lang]||DL[mode].en:mode;document.getElementById('dd').classList.remove('open');scheduleRender();}
+function applyCustom(){const f=document.getElementById('d-from').value,t=document.getElementById('d-to').value;if(!f||!t){document.getElementById('d-from').style.outline='1px solid var(--re)';document.getElementById('d-to').style.outline='1px solid var(--re)';return;}document.getElementById('d-from').style.outline='';document.getElementById('d-to').style.outline='';dFrom=f;dTo=t;dateMode='custom';document.querySelectorAll('.do').forEach(o=>o.classList.remove('sel'));document.getElementById('dlbl').textContent=f+' → '+t;document.getElementById('dd').classList.remove('open');scheduleRender();}
+function quickChip(d){const a=getDataAnchor();const b=new Date(a.max);document.getElementById('d-from').value=new Date(b-(d-1)*86400000).toISOString().split('T')[0];document.getElementById('d-to').value=a.max;}
 // ── Number formatting — FULL numbers, no abbreviation ────
 function fmtCurrency(n,decimals=2){
   const v=parseFloat(n)||0;
@@ -614,6 +602,7 @@ async function init(){
   try{let _p=0,_c=[];allAds=[];do{const _r=await fetch(`${SB}/rest/v1/ads?select=*&limit=1000&offset=${_p*1000}&order=ad_date.desc`,{headers:{...H,'Range-Unit':'items','Range':`${_p*1000}-${_p*1000+999}`}});_c=await _r.json();if(Array.isArray(_c)&&_c.length>0){allAds=[...allAds,..._c];_p++;}else break;}while(_c.length===1000);}catch(e){allAds=[];}
   buildMktFilter();
   renderAll();
+  setTimeout(()=>{const _a=getDataAnchor();const el=document.getElementById('do-range-all');if(el)el.textContent='('+_a.min.substring(5)+' → '+_a.max.substring(5)+')';},300);
 }
 function buildMktFilter(){
   const mkts=new Set();
@@ -627,7 +616,7 @@ function buildMktFilter(){
   [...mkts].sort().forEach(m=>{
     const b=document.createElement('button');
     b.className='mb on'; b.textContent=(FLAGS[m]||'')+' '+m;
-    b.onclick=()=>{if(activeMkts.has(m)){if(activeMkts.size>1){activeMkts.delete(m);b.className='mb off';}}else{activeMkts.add(m);b.className='mb on';}renderAll();};
+    b.onclick=()=>{if(activeMkts.has(m)){if(activeMkts.size>1){activeMkts.delete(m);b.className='mb off';}}else{activeMkts.add(m);b.className='mb on';}scheduleRender();};
     grp.appendChild(b);
   });
 }
@@ -664,14 +653,14 @@ function renderAll(){
   document.getElementById('kv-u').textContent=fmtInt(units);
   document.getElementById('kv-sp').textContent='€'+fmtCurrency(spend);
   document.getElementById('kv-ac').textContent=acos>0?fmtPct(acos):'—';
-  document.getElementById('kc-rev').textContent=dateMode==='all'?'All time':from+' → '+to;
+  {const _r=getRange();document.getElementById('kc-rev').textContent=dateMode==='all'?'All time':_r.from+' → '+_r.to;}
   document.getElementById('kc-ord').textContent='Cancelled: '+fmtInt(orders.length-shipped.length);
   document.getElementById('kc-u').textContent='Avg '+fmtCurrency(shipped.length>0?units/shipped.length:0,1)+' units/order';
   document.getElementById('kc-sp').textContent='Ad revenue: €'+fmtCurrency(adRev);
   const acEl=document.getElementById('kc-ac');
   acEl.className='kchg '+(acos>0&&acos<20?'up':acos>=20?'dn':'nu');
   acEl.textContent=acos>0?(acos<20?'✓ Good performance':'⚠ Above target 20%'):'No ad data';
-  document.getElementById('rev-sub').textContent=dateMode==='all'?'All time':from+' → '+to;
+  {const _r=getRange();document.getElementById('rev-sub').textContent=_r.from+' → '+_r.to;}
 
   renderAlerts(orders,ads);
   renderTopProducts(shipped);
@@ -752,7 +741,7 @@ function renderRevChart(orders,ads){
   const bd={},ad={};
   orders.forEach(o=>{const d=(o.order_date||'').split('T')[0];if(!bd[d])bd[d]=0;bd[d]+=parseFloat(o.revenue)||0;});
   ads.forEach(a=>{const d=a.ad_date||'';if(!ad[d])ad[d]=0;ad[d]+=parseFloat(a.spend)||0;});
-  const dates=[...new Set([...Object.keys(bd),...Object.keys(ad)])].filter(Boolean).sort().slice(-60);
+  const dates=[...new Set([...Object.keys(bd),...Object.keys(ad)])].filter(Boolean).sort();
   if(!dates.length){mkChart('revChart','line',[],[]);return;}
   const lbs=dates.map(d=>{const p=d.split('-');return p[1]+'/'+p[2];});
   mkChart('revChart','line',lbs,[
@@ -774,10 +763,10 @@ function renderMktChart(orders){
 function renderSales(){
   const orders=fOrders();
   const {from,to}=getRange();
-  document.getElementById('sales-sub').textContent=dateMode==='all'?'All time':from+' → '+to;
+  {const _r=getRange();document.getElementById('sales-sub').textContent=_r.from+' → '+_r.to;}
   const bd={};
   orders.forEach(o=>{const d=(o.order_date||'').split('T')[0];if(!bd[d])bd[d]=0;bd[d]+=parseFloat(o.revenue)||0;});
-  const dates=Object.keys(bd).sort().slice(-90);
+  const dates=Object.keys(bd).sort();
   mkChart('salesChart','line',dates.map(d=>{const p=d.split('-');return p[1]+'/'+p[2];}),[
     {label:'Revenue',data:dates.map(d=>Math.round(bd[d])),borderColor:'#FF9900',backgroundColor:'rgba(255,153,0,.08)',borderWidth:2,tension:.4,fill:true,pointRadius:0}
   ]);
@@ -899,7 +888,7 @@ function renderAdsPage(){
   // trend chart
   const bd={s:{},r:{}};
   ads.forEach(a=>{const d=a.ad_date||'';if(!bd.s[d])bd.s[d]=0;if(!bd.r[d])bd.r[d]=0;bd.s[d]+=parseFloat(a.spend)||0;bd.r[d]+=parseFloat(a.revenue)||0;});
-  const dates=Object.keys(bd.s).sort().slice(-60);
+  const dates=Object.keys(bd.s).sort();
   mkChart('adChart','line',dates.map(d=>{const p=d.split('-');return p[1]+'/'+p[2];}),[
     {label:'Spend',data:dates.map(d=>+bd.s[d].toFixed(2)),borderColor:'#ff4757',backgroundColor:'rgba(255,71,87,.06)',borderWidth:1.5,tension:.4,fill:true,pointRadius:0},
     {label:'Ad Revenue',data:dates.map(d=>+bd.r[d].toFixed(2)),borderColor:'#1fc86b',backgroundColor:'rgba(31,200,107,.06)',borderWidth:2,tension:.4,fill:true,pointRadius:0}
@@ -1074,7 +1063,7 @@ async function doUpload(){
 
 function mapRow(r,t){
   if(t==='orders'){
-    const date=pd(r['purchase-date']||r['order-date']||r['order_date']||r['date']);
+    const date=parseDate(r['purchase-date']||r['order-date']||r['order_date']||r['date']);
     if(!date)return null;
     return{order_id:r['amazon-order-id']||r['order-id']||null,order_date:date,asin:r['asin']||r['asin-1']||null,product_name:r['product-name']||r['title']||null,marketplace:r['sales-channel']||r['marketplace']||'EU',revenue:parseFloat(r['item-price']||r['revenue']||r['price'])||null,units:parseInt(r['quantity']||r['quantity-purchased']||r['units']||1),cost:null,margin:25,bsr:null,fulfillment:r['fulfillment-channel']||r['fulfillment']||'Amazon',status:r['order-status']||r['item-status']||'Active'};
   }
@@ -1082,13 +1071,13 @@ function mapRow(r,t){
     return{sku:r['sku']||null,asin:r['asin']||null,product_name:r['product-name']||null,qty_available:parseInt(r['available']||0),qty_inbound:parseInt(r['inbound-quantity']||0),restock_level:50,fulfillment:'FBA'};
   }
   if(t==='ads'){
-    const date=pd(r['date']||r['ad_date']);
+    const date=parseDate(r['date']||r['ad_date']);
     if(!date)return null;
     return{campaign_name:r['campaign name']||r['campaign_name']||r['campaign']||'Unknown',ad_date:date,marketplace:r['region']||r['marketplace']||'EU',spend:parseFloat(r['supply cost']||r['total cost']||r['spend']||0)||0,impressions:parseInt(r['impressions']||0)||0,clicks:parseInt(r['clicks']||0)||0,orders:parseInt(r['purchases']||r['units sold']||r['orders']||0)||0,revenue:parseFloat(r['sales']||r['revenue']||0)||0,acos:0};
   }
   return null;
 }
-function pd(d){
+function parseDate(d){
   if(!d)return null;
   try{
     const s=String(d).trim();
