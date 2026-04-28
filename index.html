@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SellerHub EU</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400h;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0a0a0f;--bg2:#111118;--bg3:#16161f;--bg4:#1d1d28;
@@ -1531,7 +1531,7 @@ init().then(()=>{const _oel=document.querySelector('.sb-item[onclick*="overview"
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'YOUR_SUPABASE_URL';
 const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Cấu hình tỷ giá (Quy đổi về EUR)
 const RATES = { '€': 1, 'EUR': 1, '£': 1.17, 'GBP': 1.17, 'zł': 0.23, 'PLN': 0.23, 'kr': 0.088, 'SEK': 0.088 };
@@ -1547,8 +1547,8 @@ function cleanAmazonNum(val) {
 }
 
 async function handleEconUpload() {
-  const fileInput = document.getElementById('econFile');
-  const monthInput = document.getElementById('econMonth');
+  const fileInput = document.getElementById('econUpload');
+  const monthInput = document.getElementById('econReportMonth');
   
   if (!fileInput || !monthInput) {
       alert("Thiếu element econFile hoặc econMonth trong HTML!");
@@ -1580,7 +1580,7 @@ async function handleEconUpload() {
       totals.ads += cleanAmazonNum(cols[364]);
     });
 
-    const { error } = await supabase
+    const { error } = await _sb
       .from('amazon_economics')
       .upsert({
         report_month: month,
@@ -1606,7 +1606,7 @@ async function handleEconUpload() {
 async function loadDashboardFromSupabase(selectedMonth) {
   if (!selectedMonth) return;
   
-  const { data, error } = await supabase
+  const { data, error } = await _sb
     .from('amazon_economics')
     .select('*')
     .eq('report_month', selectedMonth)
@@ -1625,12 +1625,24 @@ async function loadDashboardFromSupabase(selectedMonth) {
         if (el) el.innerText = val.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
     };
 
-    updateVal('rev-val', data.revenue);
-    updateVal('fba-val', data.fba_fees);
-    updateVal('sell-val', data.selling_fees);
-    updateVal('ads-val', data.ad_spend);
-    updateVal('storage-val', data.storage_fees);
-    updateVal('net-val', data.net_proceed);
+// Update P&L DOM with correct element IDs
+            const totalFees = (data.fba_fees || 0) + (data.selling_fees || 0) + (data.storage_fees || 0);
+            updateVal('pl-rev', data.revenue);
+            updateVal('pl-net', data.net_proceed);
+            updateVal('pl-fees', totalFees);
+            updateVal('pl-spend', data.ad_spend);
+            const profit = (data.revenue || 0) - totalFees - (data.ad_spend || 0);
+            updateVal('pl-profit', profit);
+            if (data.revenue > 0) {
+                        const feesPct = document.getElementById('pl-fees-pct');
+                        if (feesPct) feesPct.innerText = (totalFees / data.revenue * 100).toFixed(1) + '% of revenue';
+                        const spendPct = document.getElementById('pl-spend-pct');
+                        if (spendPct) spendPct.innerText = ((data.ad_spend||0) / data.revenue * 100).toFixed(1) + '% of revenue';
+                        const netPct = document.getElementById('pl-net-pct');
+                        if (netPct) netPct.innerText = ((data.net_proceed||0) / data.revenue * 100).toFixed(1) + '% of revenue';
+                        const profitPct = document.getElementById('pl-profit-pct');
+                        if (profitPct) profitPct.innerText = (profit / data.revenue * 100).toFixed(1) + '% margin';
+            }
   } else {
     console.log("Không có dữ liệu cho tháng " + selectedMonth);
   }
